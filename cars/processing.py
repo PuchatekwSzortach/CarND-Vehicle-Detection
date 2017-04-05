@@ -4,6 +4,7 @@ Module with various processing functions
 
 import skimage.feature
 import numpy as np
+import cv2
 
 
 def get_feature_vector(image):
@@ -58,7 +59,49 @@ def get_scanning_windows_coordinates(image_shape, window_size, step, start=None,
     return subwindows
 
 
-def get_detections(image, classifier, scaler, window_size):
+def get__detections(image, classifier, scaler, window_size):
+
+    smallest_scale = 0.25
+    largest_scale = 1
+
+    scale = smallest_scale
+
+    detections = []
+
+    while scale <= largest_scale:
+
+        print("Processing scale {}".format(scale))
+
+        target_size = (np.array(image.shape[:2]) * scale).astype(np.int)
+
+        scaled_image = cv2.resize(image, (target_size[1], target_size[0]))
+
+        single_scale_detections = get_single_scale_detections(
+            scaled_image, classifier, scaler, window_size)
+
+        rescaled_detections = []
+
+        for detection in single_scale_detections:
+
+            rescaled_detection = get_scaled_detection(detection, 1 / scale)
+            rescaled_detections.append(rescaled_detection)
+
+        detections.extend(rescaled_detections)
+
+        scale *= 1.1
+
+    return detections
+
+
+def get_scaled_detection(detection, scale):
+
+    return (
+        (int(detection[0][0] * scale), int(detection[0][1] * scale)),
+        (int(detection[1][0] * scale), int(detection[1][1] * scale))
+        )
+
+
+def get_single_scale_detections(image, classifier, scaler, window_size):
     """
     Get objects detections in image using provided classifier.
     :param image: numpy array
@@ -71,6 +114,8 @@ def get_detections(image, classifier, scaler, window_size):
     windows_coordinates = get_scanning_windows_coordinates(
         image.shape, window_size=window_size, step=window_size // 1,
         start=(0, image.shape[0]//2))
+
+    print("Checking {} subwindows".format(len(windows_coordinates)))
 
     subwindows = [get_subwindow(image, coordinates) for coordinates in windows_coordinates]
 
