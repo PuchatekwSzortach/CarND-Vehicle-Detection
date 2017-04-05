@@ -45,6 +45,10 @@ def get_image(path):
 
         return image
 
+    elif extension == ".jpg" or extension == ".jpeg":
+
+        return matplotlib.image.imread(path)
+
     else:
 
         raise NotImplementedError()
