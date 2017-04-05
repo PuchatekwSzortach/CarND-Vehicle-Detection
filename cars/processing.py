@@ -58,15 +58,46 @@ def get_scanning_windows_coordinates(image_shape, window_size, step, start=None,
     return subwindows
 
 
-def get_detections(image, classifier, scaler, crop_size):
+def get_detections(image, classifier, scaler, window_size):
     """
     Get objects detections in image using provided classifier.
     :param image: numpy array
     :param classifier: classifier
     :param scaler: scaler
-    :param crop_size: size of subwindow classifier works with
+    :param window_size: size of subwindow classifier works with
     :return: list of bounding boxes
     """
 
-    box = ((100, 100), (200, 200))
-    return [box]
+    windows_coordinates = get_scanning_windows_coordinates(
+        image.shape, window_size=window_size, step=window_size // 1,
+        start=(0, image.shape[0]//2))
+
+    subwindows = [get_subwindow(image, coordinates) for coordinates in windows_coordinates]
+
+    # Slow version, computes HOGS on each subwindow separately
+    features = np.array([get_feature_vector(image) for image in subwindows])
+
+    scaled_features = scaler.transform(features)
+
+    predictions = classifier.predict(scaled_features)
+
+    detections = []
+
+    for index, prediction in enumerate(predictions):
+
+        if prediction == 1:
+
+            detections.append(windows_coordinates[index])
+
+    return detections
+
+
+def get_subwindow(image, coordinates):
+    """
+    Given image and region of interest coordinates, return subwindow
+    :param image:
+    :param coordinates:
+    :return: subwindow
+    """
+
+    return image[coordinates[0][1]:coordinates[1][1], coordinates[0][0]:coordinates[1][0]]
