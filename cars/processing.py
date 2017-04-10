@@ -181,6 +181,8 @@ def get_fast_single_scale_detections(image, classifier, scaler, parameters, logg
 
     detections = []
 
+    features_vectors = []
+
     for coordinates in windows_coordinates:
 
         x_start = coordinates[0][0] // parameters["pixels_per_cell"][0]
@@ -193,12 +195,24 @@ def get_fast_single_scale_detections(image, classifier, scaler, parameters, logg
                             for channel in range(3)]
 
         feature_vector = np.concatenate(channel_features)
-        scaled_feature_vector = scaler.transform(feature_vector.reshape(1, -1))
-        prediction = classifier.predict(scaled_feature_vector)
+        features_vectors.append(feature_vector)
+
+    features_matrix = np.array(features_vectors)
+    scaled_features_matrix = scaler.transform(features_matrix)
+    predictions = classifier.predict(scaled_features_matrix)
+
+    for prediction, coordinates in zip(predictions, windows_coordinates):
 
         if prediction == 1:
 
             detections.append(coordinates)
+
+        # scaled_feature_vector = scaler.transform(feature_vector.reshape(1, -1))
+        # prediction = classifier.predict(scaled_feature_vector)
+        #
+        # if prediction == 1:
+        #
+        #     detections.append(coordinates)
     #
     # print("Checking {} subwindows".format(len(windows_coordinates)))
     #
