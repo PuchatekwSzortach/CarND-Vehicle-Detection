@@ -18,12 +18,12 @@ def get_feature_vector(image, parameters):
     :return: 1D numpy array
     """
 
-    channel_features = skimage.feature.hog(
-        image[:, :, 0], block_norm='L2',
+    channel_features = [skimage.feature.hog(
+        image[:, :, channel], block_norm='L2',
         pixels_per_cell=parameters["pixels_per_cell"], cells_per_block=parameters["cells_per_block"],
-        feature_vector=False)
+        feature_vector=False) for channel in range(3)]
 
-    feature_vector = channel_features.flatten()
+    feature_vector = np.concatenate([features.flatten() for features in channel_features])
 
     return feature_vector
 
@@ -165,12 +165,10 @@ def get_fast_single_scale_detections(image, classifier, scaler, parameters, logg
     :return: list of bounding boxes
     """
 
-    hog_image = skimage.feature.hog(
-        image[:, :, 0], block_norm='L2',
+    channels_hog_images = [skimage.feature.hog(
+        image[:, :, channel], block_norm='L2',
         pixels_per_cell=parameters["pixels_per_cell"], cells_per_block=parameters["cells_per_block"],
-        feature_vector=False)
-
-    print("HOG image shape: {}".format(hog_image.shape))
+        feature_vector=False) for channel in range(3)]
 
     windows_coordinates = get_scanning_windows_coordinates(
         image.shape, window_size=parameters["window_size"], window_step=parameters["pixels_per_cell"][0])
@@ -191,8 +189,10 @@ def get_fast_single_scale_detections(image, classifier, scaler, parameters, logg
         x_end = x_start + step
         y_end = y_start + step
 
-        feature_vector = hog_image[y_start:y_end, x_start:x_end].flatten()
+        channel_features = [channels_hog_images[channel][y_start:y_end, x_start:x_end].flatten()
+                            for channel in range(3)]
 
+        feature_vector = np.concatenate(channel_features)
         scaled_feature_vector = scaler.transform(feature_vector.reshape(1, -1))
         prediction = classifier.predict(scaled_feature_vector)
 
