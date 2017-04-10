@@ -33,7 +33,8 @@ def main():
         image = cars.utilities.get_image(path)
         luv_image = cv2.cvtColor(image, cv2.COLOR_RGB2LUV)
 
-        detections = cars.processing.get__detections(luv_image, classifier, scaler, window_size=64)
+        detections = cars.processing.get_detections(
+            luv_image, classifier, scaler, parameters=cars.config.parameters, logger=logger)
 
         for detection in detections:
             cv2.rectangle(image, detection[0], detection[1], thickness=6, color=(0, 255, 0))

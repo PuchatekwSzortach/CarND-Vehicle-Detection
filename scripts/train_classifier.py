@@ -30,7 +30,8 @@ def main():
     # Create feature vectors from data
     luv_images = [cv2.cvtColor(image, cv2.COLOR_RGB2LUV) for image in images]
 
-    features = np.array([cars.processing.get_feature_vector(image) for image in luv_images])
+    features = np.array([cars.processing.get_feature_vector(image, cars.config.parameters)
+                         for image in luv_images])
 
     # Shuffle data
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(

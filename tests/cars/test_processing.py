@@ -17,7 +17,7 @@ def test_get_scanning_windows_coordinates_horizontal_scan():
         ((6, 0), (9, 3)),
     ]
 
-    actual = cars.processing.get_scanning_windows_coordinates(image_shape, window_size=3, step=3)
+    actual = cars.processing.get_scanning_windows_coordinates(image_shape, window_size=3, window_step=3)
 
     assert expected == actual
 
@@ -31,7 +31,7 @@ def test_get_scanning_windows_coordinates_vertical_scan():
         ((0, 4), (3, 7)),
     ]
 
-    actual = cars.processing.get_scanning_windows_coordinates(image_shape, window_size=3, step=4)
+    actual = cars.processing.get_scanning_windows_coordinates(image_shape, window_size=3, window_step=4)
 
     assert expected == actual
 
@@ -46,7 +46,7 @@ def test_get_scanning_windows_coordinates_start_defined():
     ]
 
     actual = cars.processing.get_scanning_windows_coordinates(
-        image_shape, window_size=3, step=3, start=(5, 0))
+        image_shape, window_size=3, window_step=3, start=(5, 0))
 
     assert expected == actual
 
@@ -61,6 +61,6 @@ def test_get_scanning_windows_coordinates_end_defined():
     ]
 
     actual = cars.processing.get_scanning_windows_coordinates(
-        image_shape, window_size=4, step=3, end=(8, 4))
+        image_shape, window_size=4, window_step=3, end=(8, 4))
 
     assert expected == actual
