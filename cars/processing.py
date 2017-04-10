@@ -84,10 +84,7 @@ def get_detections(image, classifier, scaler, parameters, logger):
 
     scaled_image = cv2.resize(image, (target_size[1], target_size[0]))
 
-    # single_scale_detections = get_single_scale_detections(
-    #     scaled_image, classifier, scaler, window_size)
-
-    single_scale_detections = get_fast_single_scale_detections(
+    single_scale_detections = get_single_scale_detections(
         scaled_image, classifier, scaler, parameters=parameters, logger=logger)
 
     rescaled_detections = []
@@ -116,45 +113,7 @@ def get_scaled_detection(detection, scale):
         )
 
 
-def get_single_scale_detections(image, classifier, scaler, window_size):
-    """
-    Get objects detections in image using provided classifier.
-    :param image: numpy array
-    :param classifier: classifier
-    :param scaler: scaler
-    :param window_size: size of subwindow classifier works with
-    :return: list of bounding boxes
-    """
-
-    windows_coordinates = get_scanning_windows_coordinates(
-        image.shape, window_size=window_size, window_step=window_size // 1,
-        start=(0, image.shape[0]//2))
-
-    print("Checking {} subwindows".format(len(windows_coordinates)))
-
-    subwindows = [get_subwindow(image, coordinates) for coordinates in windows_coordinates]
-
-    # Slow version, computes HOGS on each subwindow separately
-    features = np.array([get_feature_vector(
-        image, pixels_per_cell=cars.config.pixels_per_cell, cells_per_block=cars.config.cells_per_block)
-                         for image in subwindows])
-
-    scaled_features = scaler.transform(features)
-
-    predictions = classifier.predict(scaled_features)
-
-    detections = []
-
-    for index, prediction in enumerate(predictions):
-
-        if prediction == 1:
-
-            detections.append(windows_coordinates[index])
-
-    return detections
-
-
-def get_fast_single_scale_detections(image, classifier, scaler, parameters, logger):
+def get_single_scale_detections(image, classifier, scaler, parameters, logger):
     """
     Get objects detections in image using provided classifier.
     :param image: numpy array
@@ -171,7 +130,8 @@ def get_fast_single_scale_detections(image, classifier, scaler, parameters, logg
         feature_vector=False) for channel in range(3)]
 
     windows_coordinates = get_scanning_windows_coordinates(
-        image.shape, window_size=parameters["window_size"], window_step=parameters["pixels_per_cell"][0])
+        image.shape, window_size=parameters["window_size"], window_step=parameters["pixels_per_cell"][0],
+        start=(0, image.shape[0] // 2))
 
     window_size = windows_coordinates[0][1][0] - windows_coordinates[0][0][0]
 
@@ -206,30 +166,6 @@ def get_fast_single_scale_detections(image, classifier, scaler, parameters, logg
         if prediction == 1:
 
             detections.append(coordinates)
-
-        # scaled_feature_vector = scaler.transform(feature_vector.reshape(1, -1))
-        # prediction = classifier.predict(scaled_feature_vector)
-        #
-        # if prediction == 1:
-        #
-        #     detections.append(coordinates)
-    #
-    # print("Checking {} subwindows".format(len(windows_coordinates)))
-    #
-    # subwindows = [get_subwindow(image, coordinates) for coordinates in windows_coordinates]
-    #
-    # # Slow version, computes HOGS on each subwindow separately
-    # features = np.array([get_feature_vector(image) for image in subwindows])
-    #
-    # scaled_features = scaler.transform(features)
-    #
-    # predictions = classifier.predict(scaled_features)
-
-    # for index, prediction in enumerate(predictions):
-    #
-    #     if prediction == 1:
-    #
-    #         detections.append(windows_coordinates[index])
 
     return detections
 
