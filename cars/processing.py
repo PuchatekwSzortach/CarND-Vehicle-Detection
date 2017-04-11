@@ -323,6 +323,18 @@ class AdvancedVideoProcessor:
 
                     is_detection_matched = True
                     tracked_detections_matches[index] = True
+
+                    tracked_detection = self.tracked_detections_and_counts[index][0]
+
+                    # Update tracked detection position
+                    left_top = ((tracked_detection[0][0] + detection[0][0]) // 2,
+                                (tracked_detection[0][1] + detection[0][1]) // 2)
+
+                    right_bottom = ((tracked_detection[1][0] + detection[1][0]) // 2,
+                                    (tracked_detection[1][1] + detection[1][1]) // 2)
+
+                    # Update
+                    self.tracked_detections_and_counts[index][0] = (left_top, right_bottom)
                     self.tracked_detections_and_counts[index][1] += 1
 
             # If detection wasn't matched to any of existing detections, add it as a new detection
