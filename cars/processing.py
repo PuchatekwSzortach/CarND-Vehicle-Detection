@@ -66,24 +66,26 @@ def get_scanning_windows_coordinates(image_shape, window_size, window_step, star
     return subwindows
 
 
-def get_detections(image, classifier, scaler, parameters, logger):
+def get_detections(image, classifier, scaler, parameters):
 
-    smallest_scale = 0.25
-    largest_scale = 1
-    scale_change = 1.6
+    start = time.time()
 
-    scale = smallest_scale
+    scales = [0.25, 0.4, 0.65]
+    relative_starts = [(0.2, 0.5), (0.2, 0.5), (0.2, 0.5)]
+    relative_ends = [(1, 1), (1, 0.85), (1, 0.7)]
+    window_steps = [12, 12, 10]
 
     detections = []
 
-    while scale <= largest_scale:
+    # Search image at different scales
+    for scale, relative_start, relative_end, window_step in zip(scales, relative_starts, relative_ends, window_steps):
 
         target_size = (np.array(image.shape[:2]) * scale).astype(np.int)
-
         scaled_image = cv2.resize(image, (target_size[1], target_size[0]))
 
         single_scale_detections = get_single_scale_detections(
-            scaled_image, classifier, scaler, parameters=parameters, logger=logger)
+            scaled_image, classifier, scaler, parameters=parameters,
+            relative_start_position=relative_start, relative_end_position=relative_end, window_step=window_step)
 
         rescaled_detections = []
 
@@ -94,8 +96,11 @@ def get_detections(image, classifier, scaler, parameters, logger):
 
         detections.extend(rescaled_detections)
 
-        scale *= scale_change
+    # print("Detection took {:.3f} seconds".format(time.time() - start))
 
+    # return detections
+
+    # Draw all detections on a heatmap
     heatmap = np.zeros(image.shape[:2])
 
     for detection in detections:
@@ -105,9 +110,13 @@ def get_detections(image, classifier, scaler, parameters, logger):
     # Filter out false positives
     heatmap[heatmap < parameters["heatmap_threshold"]] = 0
 
+    # Get connected components to merge multiple positive detections
     labels_image, labels_count = scipy.ndimage.measurements.label(heatmap)
 
+    # Convert results into bounding boxes
     cars_detections = get_bounding_boxes_from_labels(labels_image, labels_count)
+
+    # print("Detection took {:.3f} seconds".format(time.time() - start))
 
     return cars_detections
 
@@ -140,14 +149,17 @@ def get_scaled_detection(detection, scale):
         )
 
 
-def get_single_scale_detections(image, classifier, scaler, parameters, logger):
+def get_single_scale_detections(
+        image, classifier, scaler, parameters, relative_start_position, relative_end_position, window_step):
     """
     Get objects detections in image using provided classifier.
     :param image: numpy array
     :param classifier: classifier
     :param scaler: scaler
     :param parameters: various detection parameters
-    :param logger: logger
+    :param relative_start_position: x, y position from which scanning should start
+    :param relative_end_position: x, y position at which scanning should end
+    :param window_step: scanning window step
     :return: list of bounding boxes
     """
 
@@ -156,11 +168,12 @@ def get_single_scale_detections(image, classifier, scaler, parameters, logger):
         pixels_per_cell=parameters["pixels_per_cell"], cells_per_block=parameters["cells_per_block"],
         feature_vector=False) for channel in range(3)]
 
-    window_step = parameters["window_step"]
+    start_position = (int(relative_start_position[0] * image.shape[1]), int(relative_start_position[1] * image.shape[0]))
+    end_position = (int(relative_end_position[0] * image.shape[1]), int(relative_end_position[1] * image.shape[0]))
 
     windows_coordinates = get_scanning_windows_coordinates(
         image.shape, window_size=parameters["window_size"], window_step=window_step,
-        start=(0, image.shape[0] // 2))
+        start=start_position, end=end_position)
 
     window_size = windows_coordinates[0][1][0] - windows_coordinates[0][0][0]
 
@@ -208,3 +221,23 @@ def get_subwindow(image, coordinates):
     """
 
     return image[coordinates[0][1]:coordinates[1][1], coordinates[0][0]:coordinates[1][0]]
+
+
+class SimpleVideoProcessor:
+
+    def __init__(self, classifier, scaler, parameters):
+
+        self.classifier = classifier
+        self.scaler = scaler
+        self.parameters = parameters
+
+    def process(self, frame):
+
+        luv_image = cv2.cvtColor(frame, cv2.COLOR_RGB2LUV)
+
+        detections = get_detections(luv_image, self.classifier, self.scaler, self.parameters)
+
+        for detection in detections:
+            cv2.rectangle(frame, detection[0], detection[1], thickness=6, color=(0, 255, 0))
+
+        return frame
