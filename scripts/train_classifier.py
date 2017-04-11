@@ -9,7 +9,6 @@ import numpy as np
 import sklearn.preprocessing
 import sklearn.model_selection
 import sklearn.svm
-import skimage.feature
 import cv2
 import vlogging
 
@@ -26,6 +25,8 @@ def main():
     images, labels = cars.utilities.get_basic_dataset(
         cars.config.basic_dataset_vehicles_path,
         cars.config.basic_dataset_non_vehicles_path)
+
+    images = [cv2.resize(image, (32, 32)) for image in images]
 
     # Create feature vectors from data
     luv_images = [cv2.cvtColor(image, cv2.COLOR_RGB2LUV) for image in images]
@@ -54,7 +55,7 @@ def main():
     classifier.fit(X_train_scaled, y_train)
 
     print("Classification score is: {}".format(classifier.score(X_test_scaled, y_test)))
-    print("Training SVM took {:.2f} seconds".format(time.time() - start))
+    print("Training classifier took {:.2f} seconds".format(time.time() - start))
 
     # # Save scaler and classifier
     data = {'scaler': scaler, 'classifier': classifier}

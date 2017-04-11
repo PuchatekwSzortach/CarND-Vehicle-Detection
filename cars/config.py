@@ -11,11 +11,10 @@ log_path = "/tmp/vehicles_detection.html"
 test_images_directory = "./test_images"
 
 parameters = {
-        "window_size": 64,
-        "window_step": 16,
+        "window_size": 32,
         "pixels_per_cell": (8, 8),
         "cells_per_block": (4, 4),
-        "heatmap_threshold": 3
+        "heatmap_threshold": 4
     }
 
 video_output_directory = "../../data/vehicle_detection/"

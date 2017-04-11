@@ -11,8 +11,6 @@ def make_vehicles_detections_video():
 
     paths = ["./project_video.mp4"]
 
-    print("\n\nWe are only using a subclip now!\n\n".upper())
-
     with open(cars.config.classifier_path, mode="rb") as file:
 
         data = pickle.load(file)
@@ -24,7 +22,11 @@ def make_vehicles_detections_video():
 
     for path in paths:
 
-        clip = moviepy.editor.VideoFileClip(path).subclip(30, 34)
+        clip = moviepy.editor.VideoFileClip(path)
+
+        # print("\n\nWe are only using a subclip now!\n\n".upper())
+        # clip = clip.subclip(25, 35)
+
         processed_clip = clip.fl_image(video_processor.process)
 
         output_path = os.path.join(cars.config.video_output_directory, os.path.basename(path))
