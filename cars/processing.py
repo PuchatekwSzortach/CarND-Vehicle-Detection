@@ -72,7 +72,7 @@ def get_detections(image, classifier, scaler, parameters):
     start = time.time()
 
     scales = [0.2, 0.25, 0.35, 0.5]
-    relative_starts = [(0.2, 0.5), (0.2, 0.6), (0.4, 0.6), (0.5, 0.5)]
+    relative_starts = [(0.2, 0.6), (0.2, 0.6), (0.4, 0.6), (0.5, 0.5)]
     relative_ends = [(1, 1), (1, 0.85), (0.8, 0.8), (0.8, 0.7)]
     window_steps = [8, 8, 8, 8]
 
@@ -338,9 +338,20 @@ class AdvancedVideoProcessor:
 
                     tracked_detection = self.tracked_detections_and_counts[index][0]
 
+                    # Interpolate for x coordinates, but use y coordinates of last detection
+                    # That's because y coordinate changes much faster than x so we can't really
+                    # assume previous frame y coordinate is still close to valid
+                    left_top = ((tracked_detection[0][0] + detection[0][0]) // 2, detection[0][1])
+                    right_bottom = ((tracked_detection[1][0] + detection[1][0]) // 2, detection[1][1])
+
                     # Update
-                    self.tracked_detections_and_counts[index][0] = get_average_detection(tracked_detection, detection)
-                    self.tracked_detections_and_counts[index][1] += 1
+                    self.tracked_detections_and_counts[index][0] = (left_top, right_bottom)
+
+                    current_count = self.tracked_detections_and_counts[index][1]
+
+                    # Even if we tracked a given detection for more than x frames, only mark it as tracked for x frame,
+                    # so as not to have long hanging detections that were valid for long time, but aren't any more
+                    self.tracked_detections_and_counts[index][1] = min(current_count + 1, 5)
 
             # If detection wasn't matched to any of existing detections, add it as a new detection
             if is_detection_matched is False:
@@ -352,7 +363,7 @@ class AdvancedVideoProcessor:
 
             if tracked_detections_matches[index] is False:
 
-                self.tracked_detections_and_counts[index][1] -= 1
+                self.tracked_detections_and_counts[index][1] -= 2
 
         self._remove_stale_detections()
         self.tracked_detections_and_counts.extend(new_detections_and_counts)
@@ -368,7 +379,7 @@ class AdvancedVideoProcessor:
         # Any tracked detections that aren't seen for a while, should be removed
         for detection_count in tracked_detections_copy:
 
-            if detection_count[1] <= -3:
+            if detection_count[1] <= 0:
 
                 self.tracked_detections_and_counts.remove(detection_count)
 
