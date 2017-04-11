@@ -9,6 +9,7 @@ import random
 
 import vlogging
 import cv2
+import numpy as np
 
 import cars.config
 import cars.utilities
@@ -41,7 +42,6 @@ def main():
 
         bgr_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         logger.info(vlogging.VisualRecord(os.path.basename(path), bgr_image, fmt='jpg'))
-        logger.info(vlogging.VisualRecord("Detections", detections, fmt='jpg'))
 
 
 if __name__ == "__main__":

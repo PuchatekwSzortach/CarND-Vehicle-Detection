@@ -8,6 +8,7 @@ import skimage.feature
 import numpy as np
 import cv2
 import vlogging
+import scipy.ndimage.measurements
 
 import cars.config
 
@@ -67,8 +68,6 @@ def get_scanning_windows_coordinates(image_shape, window_size, window_step, star
 
 def get_detections(image, classifier, scaler, parameters, logger):
 
-    start = time.time()
-
     smallest_scale = 0.25
     largest_scale = 1
     scale_change = 1.6
@@ -78,8 +77,6 @@ def get_detections(image, classifier, scaler, parameters, logger):
     detections = []
 
     while scale <= largest_scale:
-
-        print("Processing scale {}".format(scale))
 
         target_size = (np.array(image.shape[:2]) * scale).astype(np.int)
 
@@ -95,13 +92,42 @@ def get_detections(image, classifier, scaler, parameters, logger):
             rescaled_detection = get_scaled_detection(detection, 1 / scale)
             rescaled_detections.append(rescaled_detection)
 
-        print("Added {}".format(len(single_scale_detections)))
-
         detections.extend(rescaled_detections)
 
         scale *= scale_change
 
-    print("Detection took: {} seconds".format(time.time() - start))
+    heatmap = np.zeros(image.shape[:2])
+
+    for detection in detections:
+
+        heatmap[detection[0][1]:detection[1][1], detection[0][0]:detection[1][0]] += 1
+
+    # Filter out false positives
+    heatmap[heatmap < parameters["heatmap_threshold"]] = 0
+
+    labels_image, labels_count = scipy.ndimage.measurements.label(heatmap)
+
+    cars_detections = get_bounding_boxes_from_labels(labels_image, labels_count)
+
+    return cars_detections
+
+
+def get_bounding_boxes_from_labels(labels_image, labels_count):
+
+    detections = []
+
+    for label_index in range(1, labels_count + 1):
+
+        # Slightly modified code from Udacity class
+        nonzero_indices = (labels_image == label_index).nonzero()
+
+        # Identify x and y values of those pixels
+        nonzero_ys = np.array(nonzero_indices[0])
+        nonzero_xs = np.array(nonzero_indices[1])
+        # Define a bounding box based on min/max x and y
+
+        detection = ((np.min(nonzero_xs), np.min(nonzero_ys)), (np.max(nonzero_xs), np.max(nonzero_ys)))
+        detections.append(detection)
 
     return detections
 

@@ -14,5 +14,6 @@ parameters = {
         "window_size": 64,
         "window_step": 16,
         "pixels_per_cell": (8, 8),
-        "cells_per_block": (4, 4)
+        "cells_per_block": (4, 4),
+        "heatmap_threshold": 5
     }
