@@ -14,7 +14,7 @@ parameters = {
         "window_size": 32,
         "pixels_per_cell": (8, 8),
         "cells_per_block": (4, 4),
-        "heatmap_threshold": 5
+        "heatmap_threshold": 4
     }
 
 video_output_directory = "../../data/vehicle_detection/"

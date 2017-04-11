@@ -70,10 +70,10 @@ def get_detections(image, classifier, scaler, parameters):
 
     start = time.time()
 
-    scales = [0.25, 0.4, 0.65]
-    relative_starts = [(0.2, 0.5), (0.2, 0.5), (0.2, 0.5)]
-    relative_ends = [(1, 1), (1, 0.85), (1, 0.7)]
-    window_steps = [12, 12, 10]
+    scales = [0.2, 0.25, 0.35, 0.5]
+    relative_starts = [(0.2, 0.5), (0.2, 0.6), (0.4, 0.6), (0.5, 0.5)]
+    relative_ends = [(1, 1), (1, 0.85), (0.8, 0.8), (0.8, 0.7)]
+    window_steps = [8, 8, 8, 8]
 
     detections = []
 
@@ -96,8 +96,6 @@ def get_detections(image, classifier, scaler, parameters):
 
         detections.extend(rescaled_detections)
 
-    # print("Detection took {:.3f} seconds".format(time.time() - start))
-
     # return detections
 
     # Draw all detections on a heatmap
@@ -109,6 +107,8 @@ def get_detections(image, classifier, scaler, parameters):
 
     # Filter out false positives
     heatmap[heatmap < parameters["heatmap_threshold"]] = 0
+
+    # print(np.max(heatmap))
 
     # Get connected components to merge multiple positive detections
     labels_image, labels_count = scipy.ndimage.measurements.label(heatmap)
