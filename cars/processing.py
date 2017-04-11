@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 import vlogging
 import scipy.ndimage.measurements
+import shapely.geometry
 
 import cars.config
 
@@ -225,26 +226,6 @@ def get_subwindow(image, coordinates):
     return image[coordinates[0][1]:coordinates[1][1], coordinates[0][0]:coordinates[1][0]]
 
 
-class SimpleVideoProcessor:
-
-    def __init__(self, classifier, scaler, parameters):
-
-        self.classifier = classifier
-        self.scaler = scaler
-        self.parameters = parameters
-
-    def process(self, frame):
-
-        luv_image = cv2.cvtColor(frame, cv2.COLOR_RGB2LUV)
-
-        detections = get_detections(luv_image, self.classifier, self.scaler, self.parameters)
-
-        for detection in detections:
-            cv2.rectangle(frame, detection[0], detection[1], thickness=6, color=(0, 255, 0))
-
-        return frame
-
-
 def is_detection_sensible(detection):
     """
     A simple predicate that checkes if a detection seems sensible.
@@ -268,3 +249,116 @@ def is_detection_sensible(detection):
 
     # If all tests passed, detection looks alright
     return True
+
+
+def get_intersection_over_union(first_detection, second_detection):
+
+    first_box = shapely.geometry.box(
+        first_detection[0][0], first_detection[0][1], first_detection[1][0], first_detection[1][1])
+
+    second_box = shapely.geometry.box(
+        second_detection[0][0], second_detection[0][1], second_detection[1][0], second_detection[1][1])
+
+    intersection_polygon = first_box.intersection(second_box)
+    union_polygon = first_box.union(second_box)
+
+    return intersection_polygon.area / union_polygon.area
+
+
+class SimpleVideoProcessor:
+    """
+    A simple video processor that detects cars in each frame separately and doesn't combine results between frames
+    """
+
+    def __init__(self, classifier, scaler, parameters):
+
+        self.classifier = classifier
+        self.scaler = scaler
+        self.parameters = parameters
+
+    def process(self, frame):
+
+        luv_image = cv2.cvtColor(frame, cv2.COLOR_RGB2LUV)
+
+        detections = get_detections(luv_image, self.classifier, self.scaler, self.parameters)
+
+        for detection in detections:
+            cv2.rectangle(frame, detection[0], detection[1], thickness=6, color=(0, 255, 0))
+
+        return frame
+
+
+class AdvancedVideoProcessor:
+    """
+    A video processor that looks at detections from consecutive frames to compute final detection bounding boxes
+    """
+
+    def __init__(self, classifier, scaler, parameters):
+
+        self.classifier = classifier
+        self.scaler = scaler
+        self.parameters = parameters
+
+        self.tracked_detections_and_counts = []
+
+    def process(self, frame):
+
+        luv_image = cv2.cvtColor(frame, cv2.COLOR_RGB2LUV)
+        detections = get_detections(luv_image, self.classifier, self.scaler, self.parameters)
+
+        new_detections_and_counts = []
+
+        tracked_detections_matches = [False] * len(self.tracked_detections_and_counts)
+
+        # Go over all detections from current frame
+        for detection in detections:
+
+            is_detection_matched = False
+
+            # Try to match them to any of existing detections
+            for index in range(len(self.tracked_detections_and_counts)):
+
+                # If IOU is high update tracked detection
+                if get_intersection_over_union(self.tracked_detections_and_counts[index][0], detection) > 0.5:
+
+                    is_detection_matched = True
+                    tracked_detections_matches[index] = True
+                    self.tracked_detections_and_counts[index][1] += 1
+
+            # If detection wasn't matched to any of existing detections, add it as a new detection
+            if is_detection_matched is False:
+
+                new_detections_and_counts.append([detection, 1])
+
+        # Any existing detection that wasn't matched should have its count decreased
+        for index in range(len(self.tracked_detections_and_counts)):
+
+            if tracked_detections_matches[index] is False:
+
+                self.tracked_detections_and_counts[index][1] -= 1
+
+        self._remove_stale_detections()
+        self.tracked_detections_and_counts.extend(new_detections_and_counts)
+
+        self._draw_tracked_detections(frame, self.tracked_detections_and_counts)
+
+        return frame
+
+    def _remove_stale_detections(self):
+
+        tracked_detections_copy = self.tracked_detections_and_counts.copy()
+
+        # Any tracked detections that aren't seen for a while, should be removed
+        for detection_count in tracked_detections_copy:
+
+            if detection_count[1] <= -3:
+
+                self.tracked_detections_and_counts.remove(detection_count)
+
+    def _draw_tracked_detections(self, frame, tracked_detections_and_counts):
+
+        for detection, count in tracked_detections_and_counts:
+
+            if count >= 3:
+
+                cv2.rectangle(frame, detection[0], detection[1], thickness=6, color=(0, 255, 0))

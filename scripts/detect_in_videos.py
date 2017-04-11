@@ -18,7 +18,8 @@ def make_vehicles_detections_video():
         scaler = data['scaler']
         classifier = data['classifier']
 
-    video_processor = cars.processing.SimpleVideoProcessor(classifier, scaler, cars.config.parameters)
+    # video_processor = cars.processing.SimpleVideoProcessor(classifier, scaler, cars.config.parameters)
+    video_processor = cars.processing.AdvancedVideoProcessor(classifier, scaler, cars.config.parameters)
 
     for path in paths:
 
