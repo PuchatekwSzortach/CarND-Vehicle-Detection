@@ -40,7 +40,7 @@ def main():
             cv2.rectangle(image, detection[0], detection[1], thickness=6, color=(0, 255, 0))
 
         bgr_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        logger.info(vlogging.VisualRecord("Image", bgr_image, fmt='jpg'))
+        logger.info(vlogging.VisualRecord(os.path.basename(path), bgr_image, fmt='jpg'))
         logger.info(vlogging.VisualRecord("Detections", detections, fmt='jpg'))
 
 

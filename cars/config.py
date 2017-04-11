@@ -12,6 +12,7 @@ test_images_directory = "./test_images"
 
 parameters = {
         "window_size": 64,
+        "window_step": 16,
         "pixels_per_cell": (8, 8),
         "cells_per_block": (4, 4)
     }

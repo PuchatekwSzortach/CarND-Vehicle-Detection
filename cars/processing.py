@@ -71,36 +71,37 @@ def get_detections(image, classifier, scaler, parameters, logger):
 
     smallest_scale = 0.25
     largest_scale = 1
+    scale_change = 1.6
 
-    scale = 0.4
+    scale = smallest_scale
 
     detections = []
 
-    # while scale <= largest_scale:
+    while scale <= largest_scale:
 
-    print("Processing scale {}".format(scale))
+        print("Processing scale {}".format(scale))
 
-    target_size = (np.array(image.shape[:2]) * scale).astype(np.int)
+        target_size = (np.array(image.shape[:2]) * scale).astype(np.int)
 
-    scaled_image = cv2.resize(image, (target_size[1], target_size[0]))
+        scaled_image = cv2.resize(image, (target_size[1], target_size[0]))
 
-    single_scale_detections = get_single_scale_detections(
-        scaled_image, classifier, scaler, parameters=parameters, logger=logger)
+        single_scale_detections = get_single_scale_detections(
+            scaled_image, classifier, scaler, parameters=parameters, logger=logger)
 
-    rescaled_detections = []
+        rescaled_detections = []
 
-    for detection in single_scale_detections:
+        for detection in single_scale_detections:
 
-        rescaled_detection = get_scaled_detection(detection, 1 / scale)
-        rescaled_detections.append(rescaled_detection)
+            rescaled_detection = get_scaled_detection(detection, 1 / scale)
+            rescaled_detections.append(rescaled_detection)
 
-    print("Added {}".format(len(single_scale_detections)))
+        print("Added {}".format(len(single_scale_detections)))
 
-    detections.extend(rescaled_detections)
+        detections.extend(rescaled_detections)
 
-    scale *= 1.1
+        scale *= scale_change
 
-    print("Detection took: {}".format(time.time() - start))
+    print("Detection took: {} seconds".format(time.time() - start))
 
     return detections
 
@@ -129,15 +130,17 @@ def get_single_scale_detections(image, classifier, scaler, parameters, logger):
         pixels_per_cell=parameters["pixels_per_cell"], cells_per_block=parameters["cells_per_block"],
         feature_vector=False) for channel in range(3)]
 
+    window_step = parameters["window_step"]
+
     windows_coordinates = get_scanning_windows_coordinates(
-        image.shape, window_size=parameters["window_size"], window_step=parameters["pixels_per_cell"][0],
+        image.shape, window_size=parameters["window_size"], window_step=window_step,
         start=(0, image.shape[0] // 2))
 
     window_size = windows_coordinates[0][1][0] - windows_coordinates[0][0][0]
 
     hog_block_size = parameters["cells_per_block"][0] * parameters["pixels_per_cell"][0]
 
-    step = ((window_size - hog_block_size) // parameters["pixels_per_cell"][0]) + 1
+    hog_window_span = ((window_size - hog_block_size) // parameters["pixels_per_cell"][0]) + 1
 
     detections = []
 
@@ -148,8 +151,8 @@ def get_single_scale_detections(image, classifier, scaler, parameters, logger):
         x_start = coordinates[0][0] // parameters["pixels_per_cell"][0]
         y_start = coordinates[0][1] // parameters["pixels_per_cell"][0]
 
-        x_end = x_start + step
-        y_end = y_start + step
+        x_end = x_start + hog_window_span
+        y_end = y_start + hog_window_span
 
         channel_features = [channels_hog_images[channel][y_start:y_end, x_start:x_end].flatten()
                             for channel in range(3)]
