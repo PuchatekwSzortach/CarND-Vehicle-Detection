@@ -26,6 +26,8 @@ def main():
         cars.config.basic_dataset_vehicles_path,
         cars.config.basic_dataset_non_vehicles_path)
 
+    images = [cv2.resize(image, (32, 32)) for image in images]
+
     # Create feature vectors from data
     luv_images = [cv2.cvtColor(image, cv2.COLOR_RGB2LUV) for image in images]
 

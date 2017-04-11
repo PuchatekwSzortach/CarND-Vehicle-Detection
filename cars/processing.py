@@ -97,7 +97,7 @@ def get_detections(image, classifier, scaler, parameters):
         detections.extend(rescaled_detections)
 
     # print("Detection took {:.3f} seconds".format(time.time() - start))
-    #
+
     # return detections
 
     # Draw all detections on a heatmap
@@ -116,9 +116,11 @@ def get_detections(image, classifier, scaler, parameters):
     # Convert results into bounding boxes
     cars_detections = get_bounding_boxes_from_labels(labels_image, labels_count)
 
-    print("Detection took {:.3f} seconds".format(time.time() - start))
+    # print("Detection took {:.3f} seconds".format(time.time() - start))
 
-    return cars_detections
+    # Do a last check on detections
+    sensible_detections = [detection for detection in cars_detections if is_detection_sensible(detection)]
+    return sensible_detections
 
 
 def get_bounding_boxes_from_labels(labels_image, labels_count):
@@ -241,3 +243,28 @@ class SimpleVideoProcessor:
             cv2.rectangle(frame, detection[0], detection[1], thickness=6, color=(0, 255, 0))
 
         return frame
+
+
+def is_detection_sensible(detection):
+    """
+    A simple predicate that checkes if a detection seems sensible.
+    It does that by looking at its size and aspect ratio
+    :param detection:
+    :return: bool
+    """
+
+    x_size = detection[1][0] - detection[0][0]
+    y_size = detection[1][1] - detection[0][1]
+
+    if x_size < 32 or y_size < 32:
+
+        return False
+
+    aspect_ratio = x_size / y_size
+
+    if aspect_ratio < 0.25 or aspect_ratio > 4:
+
+        return False
+
+    # If all tests passed, detection looks alright
+    return True
