@@ -265,6 +265,18 @@ def get_intersection_over_union(first_detection, second_detection):
     return intersection_polygon.area / union_polygon.area
 
 
+def get_average_detection(first_detection, second_detection):
+
+    # Update tracked detection position
+    left_top = ((first_detection[0][0] + second_detection[0][0]) // 2,
+                (first_detection[0][1] + second_detection[0][1]) // 2)
+
+    right_bottom = ((first_detection[1][0] + second_detection[1][0]) // 2,
+                    (first_detection[1][1] + second_detection[1][1]) // 2)
+
+    return left_top, right_bottom
+
+
 class SimpleVideoProcessor:
     """
     A simple video processor that detects cars in each frame separately and doesn't combine results between frames
@@ -319,22 +331,15 @@ class AdvancedVideoProcessor:
             for index in range(len(self.tracked_detections_and_counts)):
 
                 # If IOU is high update tracked detection
-                if get_intersection_over_union(self.tracked_detections_and_counts[index][0], detection) > 0.5:
+                if get_intersection_over_union(self.tracked_detections_and_counts[index][0], detection) > 0.25:
 
                     is_detection_matched = True
                     tracked_detections_matches[index] = True
 
                     tracked_detection = self.tracked_detections_and_counts[index][0]
 
-                    # Update tracked detection position
-                    left_top = ((tracked_detection[0][0] + detection[0][0]) // 2,
-                                (tracked_detection[0][1] + detection[0][1]) // 2)
-
-                    right_bottom = ((tracked_detection[1][0] + detection[1][0]) // 2,
-                                    (tracked_detection[1][1] + detection[1][1]) // 2)
-
                     # Update
-                    self.tracked_detections_and_counts[index][0] = (left_top, right_bottom)
+                    self.tracked_detections_and_counts[index][0] = get_average_detection(tracked_detection, detection)
                     self.tracked_detections_and_counts[index][1] += 1
 
             # If detection wasn't matched to any of existing detections, add it as a new detection
