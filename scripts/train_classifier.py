@@ -9,7 +9,6 @@ import numpy as np
 import sklearn.preprocessing
 import sklearn.model_selection
 import sklearn.svm
-import skimage.feature
 import cv2
 import vlogging
 
@@ -54,7 +53,7 @@ def main():
     classifier.fit(X_train_scaled, y_train)
 
     print("Classification score is: {}".format(classifier.score(X_test_scaled, y_test)))
-    print("Training SVM took {:.2f} seconds".format(time.time() - start))
+    print("Training classifier took {:.2f} seconds".format(time.time() - start))
 
     # # Save scaler and classifier
     data = {'scaler': scaler, 'classifier': classifier}

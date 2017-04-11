@@ -97,7 +97,7 @@ def get_detections(image, classifier, scaler, parameters):
         detections.extend(rescaled_detections)
 
     # print("Detection took {:.3f} seconds".format(time.time() - start))
-
+    #
     # return detections
 
     # Draw all detections on a heatmap
@@ -116,7 +116,7 @@ def get_detections(image, classifier, scaler, parameters):
     # Convert results into bounding boxes
     cars_detections = get_bounding_boxes_from_labels(labels_image, labels_count)
 
-    # print("Detection took {:.3f} seconds".format(time.time() - start))
+    print("Detection took {:.3f} seconds".format(time.time() - start))
 
     return cars_detections
 
