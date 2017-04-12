@@ -5,7 +5,6 @@ Script for detecting vehicles in test images
 import os
 import glob
 import pickle
-import random
 
 import vlogging
 import cv2
