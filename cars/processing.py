@@ -69,11 +69,10 @@ def get_scanning_windows_coordinates(image_shape, window_size, window_step, star
 
 def get_detections(image, classifier, scaler, parameters):
 
-    start = time.time()
-
+    # We will process image at varying scales, for each scale search within a different region of the image,
     scales = [0.2, 0.25, 0.35, 0.5]
-    relative_starts = [(0.2, 0.6), (0.2, 0.6), (0.4, 0.6), (0.5, 0.5)]
-    relative_ends = [(1, 1), (1, 0.85), (0.8, 0.8), (0.8, 0.7)]
+    relative_starts = [(0.2, 0.6), (0.2, 0.55), (0.4, 0.55), (0.5, 0.55)]
+    relative_ends = [(1, 1), (1, 0.8), (0.8, 0.75), (0.8, 0.65)]
     window_steps = [8, 8, 8, 8]
 
     detections = []
@@ -90,14 +89,13 @@ def get_detections(image, classifier, scaler, parameters):
 
         rescaled_detections = []
 
+        # Scale detections back to original image scale
         for detection in single_scale_detections:
 
             rescaled_detection = get_scaled_detection(detection, 1 / scale)
             rescaled_detections.append(rescaled_detection)
 
         detections.extend(rescaled_detections)
-
-    # return detections
 
     # Draw all detections on a heatmap
     heatmap = np.zeros(image.shape[:2])
@@ -109,17 +107,13 @@ def get_detections(image, classifier, scaler, parameters):
     # Filter out false positives
     heatmap[heatmap < parameters["heatmap_threshold"]] = 0
 
-    # print(np.max(heatmap))
-
     # Get connected components to merge multiple positive detections
     labels_image, labels_count = scipy.ndimage.measurements.label(heatmap)
 
     # Convert results into bounding boxes
     cars_detections = get_bounding_boxes_from_labels(labels_image, labels_count)
 
-    # print("Detection took {:.3f} seconds".format(time.time() - start))
-
-    # Do a last check on detections
+    # Filter out unreasonable detections - e.g. very small or with strange aspect ratios
     sensible_detections = [detection for detection in cars_detections if is_detection_sensible(detection)]
     return sensible_detections
 
@@ -166,14 +160,17 @@ def get_single_scale_detections(
     :return: list of bounding boxes
     """
 
+    # Compute HOGs for each channel
     channels_hog_images = [skimage.feature.hog(
         image[:, :, channel], block_norm='L2',
         pixels_per_cell=parameters["pixels_per_cell"], cells_per_block=parameters["cells_per_block"],
         feature_vector=False) for channel in range(3)]
 
+    # Compute range within which we should scan image
     start_position = (int(relative_start_position[0] * image.shape[1]), int(relative_start_position[1] * image.shape[0]))
     end_position = (int(relative_end_position[0] * image.shape[1]), int(relative_end_position[1] * image.shape[0]))
 
+    # Get scanning windows coordinates
     windows_coordinates = get_scanning_windows_coordinates(
         image.shape, window_size=parameters["window_size"], window_step=window_step,
         start=start_position, end=end_position)
@@ -184,10 +181,9 @@ def get_single_scale_detections(
 
     hog_window_span = ((window_size - hog_block_size) // parameters["pixels_per_cell"][0]) + 1
 
-    detections = []
-
     features_vectors = []
 
+    # Extract feature vector for each sliding window
     for coordinates in windows_coordinates:
 
         x_start = coordinates[0][0] // parameters["pixels_per_cell"][0]
@@ -206,6 +202,8 @@ def get_single_scale_detections(
     scaled_features_matrix = scaler.transform(features_matrix)
     predictions = classifier.predict(scaled_features_matrix)
 
+    detections = []
+
     for prediction, coordinates in zip(predictions, windows_coordinates):
 
         if prediction == 1:
@@ -215,20 +213,9 @@ def get_single_scale_detections(
     return detections
 
 
-def get_subwindow(image, coordinates):
-    """
-    Given image and region of interest coordinates, return subwindow
-    :param image:
-    :param coordinates:
-    :return: subwindow
-    """
-
-    return image[coordinates[0][1]:coordinates[1][1], coordinates[0][0]:coordinates[1][0]]
-
-
 def is_detection_sensible(detection):
     """
-    A simple predicate that checkes if a detection seems sensible.
+    A simple predicate that checks if a detection seems sensible.
     It does that by looking at its size and aspect ratio
     :param detection:
     :return: bool
@@ -252,6 +239,9 @@ def is_detection_sensible(detection):
 
 
 def get_intersection_over_union(first_detection, second_detection):
+    """
+    Get intersection over union of two detections
+    """
 
     first_box = shapely.geometry.box(
         first_detection[0][0], first_detection[0][1], first_detection[1][0], first_detection[1][1])
@@ -263,18 +253,6 @@ def get_intersection_over_union(first_detection, second_detection):
     union_polygon = first_box.union(second_box)
 
     return intersection_polygon.area / union_polygon.area
-
-
-def get_average_detection(first_detection, second_detection):
-
-    # Update tracked detection position
-    left_top = ((first_detection[0][0] + second_detection[0][0]) // 2,
-                (first_detection[0][1] + second_detection[0][1]) // 2)
-
-    right_bottom = ((first_detection[1][0] + second_detection[1][0]) // 2,
-                    (first_detection[1][1] + second_detection[1][1]) // 2)
-
-    return left_top, right_bottom
 
 
 class SimpleVideoProcessor:
@@ -349,7 +327,7 @@ class AdvancedVideoProcessor:
 
                     current_count = self.tracked_detections_and_counts[index][1]
 
-                    # Even if we tracked a given detection for more than x frames, only mark it as tracked for x frame,
+                    # Even if we tracked a given detection for more than x frames, only mark it as tracked for x frames,
                     # so as not to have long hanging detections that were valid for long time, but aren't any more
                     self.tracked_detections_and_counts[index][1] = min(current_count + 1, 5)
 
@@ -358,7 +336,7 @@ class AdvancedVideoProcessor:
 
                 new_detections_and_counts.append([detection, 1])
 
-        # Any existing detection that wasn't matched should have its count decreased
+        # Any existing detection that wasn't matched should have its count decreased by some value
         for index in range(len(self.tracked_detections_and_counts)):
 
             if tracked_detections_matches[index] is False:
